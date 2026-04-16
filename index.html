@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NUMBERS – A Grasshopper Game</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #1a1a2e;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      font-family: 'Press Start 2P', monospace;
+      color: #00ff88;
+      user-select: none;
+      overflow: hidden;
+    }
+
+    /* Fake phone shell */
+    #phone {
+      width: 320px;
+      background: #2a2a2a;
+      border-radius: 36px;
+      border: 4px solid #444;
+      box-shadow: 0 0 40px rgba(0,255,136,0.2), inset 0 0 10px #000;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px 16px 30px;
+      gap: 12px;
+      position: relative;
+    }
+
+    #brand {
+      font-size: 9px;
+      color: #555;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+    }
+
+    /* Screen */
+    #screen {
+      width: 100%;
+      background: #0a0a0a;
+      border-radius: 8px;
+      border: 3px solid #333;
+      min-height: 340px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+      padding: 16px;
+      gap: 10px;
+    }
+
+    #screen-scanline {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0,0,0,0.15) 2px,
+        rgba(0,0,0,0.15) 4px
+      );
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    #game-title {
+      font-size: 18px;
+      color: #00ff88;
+      text-shadow: 0 0 10px #00ff88;
+      letter-spacing: 6px;
+      text-align: center;
+    }
+
+    #subtitle {
+      font-size: 6px;
+      color: #555;
+      text-align: center;
+      line-height: 1.8;
+    }
+
+    /* The number display */
+    #number-display {
+      font-size: 72px;
+      color: #00ff88;
+      text-shadow: 0 0 20px #00ff88, 0 0 40px #00ff88;
+      text-align: center;
+      min-height: 90px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.05s;
+      position: relative;
+      z-index: 2;
+    }
+
+    #number-display.pop {
+      animation: pop 0.2s ease-out;
+    }
+
+    @keyframes pop {
+      0%   { transform: scale(1.5); color: #fff; text-shadow: 0 0 60px #fff; }
+      100% { transform: scale(1);   color: #00ff88; }
+    }
+
+    /* Reaction text */
+    #reaction {
+      font-size: 7px;
+      color: #ffdd00;
+      text-shadow: 0 0 8px #ffdd00;
+      text-align: center;
+      min-height: 28px;
+      line-height: 1.8;
+      z-index: 2;
+    }
+
+    /* Suspense bar */
+    #suspense-bar-wrap {
+      width: 90%;
+      height: 6px;
+      background: #1a1a1a;
+      border-radius: 3px;
+      overflow: hidden;
+      z-index: 2;
+    }
+    #suspense-bar {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #00ff88, #ffdd00);
+      border-radius: 3px;
+      transition: width 0.4s ease;
+    }
+
+    #instructions {
+      font-size: 6px;
+      color: #444;
+      text-align: center;
+      line-height: 2;
+      z-index: 2;
+    }
+
+    #high-score-display {
+      font-size: 6px;
+      color: #333;
+      text-align: center;
+      z-index: 2;
+    }
+
+    /* Button */
+    #next-btn {
+      width: 90px;
+      height: 90px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 35%, #555, #222);
+      border: 3px solid #666;
+      color: #00ff88;
+      font-family: 'Press Start 2P', monospace;
+      font-size: 7px;
+      cursor: pointer;
+      box-shadow: 0 4px 0 #111, 0 0 12px rgba(0,255,136,0.1);
+      transition: transform 0.08s, box-shadow 0.08s;
+      text-align: center;
+      line-height: 1.6;
+      letter-spacing: 1px;
+    }
+
+    #next-btn:active {
+      transform: translateY(3px);
+      box-shadow: 0 1px 0 #111;
+    }
+
+    /* Overlay for suspense */
+    #suspense-overlay {
+      display: none;
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: #000;
+      z-index: 5;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      padding: 20px;
+    }
+
+    #suspense-overlay.active {
+      display: flex;
+    }
+
+    #suspense-text {
+      font-size: 8px;
+      color: #ffdd00;
+      text-align: center;
+      line-height: 2.2;
+      text-shadow: 0 0 10px #ffdd00;
+      animation: flicker 0.8s infinite alternate;
+    }
+
+    @keyframes flicker {
+      0%   { opacity: 1; }
+      100% { opacity: 0.6; }
+    }
+
+    #suspense-dots {
+      font-size: 14px;
+      color: #00ff88;
+      letter-spacing: 8px;
+      animation: dotpulse 1s infinite;
+    }
+
+    @keyframes dotpulse {
+      0%, 100% { opacity: 0.2; }
+      50%       { opacity: 1; }
+    }
+
+    /* Confetti canvas */
+    #confetti-canvas {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      pointer-events: none;
+      z-index: 100;
+    }
+
+    /* Side buttons (decorative) */
+    .side-btn {
+      position: absolute;
+      right: -7px;
+      width: 5px;
+      height: 30px;
+      background: #444;
+      border-radius: 0 3px 3px 0;
+    }
+    .side-btn.top    { top: 80px; }
+    .side-btn.bottom { top: 120px; }
+
+    #speaker {
+      display: flex;
+      gap: 5px;
+    }
+    .speaker-dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: #333;
+    }
+  </style>
+</head>
+<body>
+
+<canvas id="confetti-canvas"></canvas>
+
+<div id="phone">
+  <div class="side-btn top"></div>
+  <div class="side-btn bottom"></div>
+
+  <div id="brand">GRASSHOPPER</div>
+
+  <div id="screen">
+    <div id="screen-scanline"></div>
+
+    <!-- Suspense overlay -->
+    <div id="suspense-overlay">
+      <div id="suspense-text">WAIT...<br>DO THEY HAVE IT?</div>
+      <div id="suspense-dots">. . .</div>
+    </div>
+
+    <div id="game-title">NUMBERS</div>
+    <div id="subtitle">#1 GAME ON GRASSHOPPER<br>SIFT THROUGH THE NUMBERS</div>
+
+    <div id="number-display">—</div>
+
+    <div id="reaction">&nbsp;</div>
+
+    <div id="suspense-bar-wrap">
+      <div id="suspense-bar"></div>
+    </div>
+
+    <div id="high-score-display">BEST LAPS: <span id="high-score">—</span></div>
+
+    <div id="instructions">TAP THE BUTTON<br>TO SIFT</div>
+  </div>
+
+  <!-- D-pad / nav (decorative) -->
+  <div id="next-btn" onclick="sift()">SIFT<br>THRU</div>
+
+  <div id="speaker">
+    <div class="speaker-dot"></div>
+    <div class="speaker-dot"></div>
+    <div class="speaker-dot"></div>
+    <div class="speaker-dot"></div>
+    <div class="speaker-dot"></div>
+  </div>
+</div>
+
+<script>
+  // ── Game state ────────────────────────────────────────────────────────────
+  let current   = 0;
+  let laps      = 0;   // completed full runs through 1–10
+  let bestLaps  = parseInt(localStorage.getItem('numbers_best') || '0', 10);
+  let sifting   = false;
+
+  // Numbers that trigger "oh my god" moments
+  const OMG = new Set([8, 9, 10]);
+
+  // Reactions by number
+  function getReaction(n) {
+    if (n === 1)  return "oh okay, there's one.";
+    if (n === 2)  return "two! yep, two is in there.";
+    if (n === 3)  return "three, obviously.";
+    if (n === 4)  return "four. uh huh.";
+    if (n === 5)  return "five. they got five.";
+    if (n === 6)  return "six is there too.";
+    if (n === 7)  return "seven. okay. wow.";
+    if (n === 8)  return "OH MY GOD.\nTHEY HAVE EIGHT.";
+    if (n === 9)  return "OH MY GOD.\nTHEY HAVE NINE??";
+    if (n === 10) return "DOUBLE DIGITS.\nI'M GOING INSANE.";
+    return null;
+  }
+
+  // Numbers that get a suspense moment before revealing
+  function needsSuspense(n) {
+    return OMG.has(n);
+  }
+
+  // ── DOM refs ──────────────────────────────────────────────────────────────
+  const numDisplay   = document.getElementById('number-display');
+  const reactionEl   = document.getElementById('reaction');
+  const suspenseOver = document.getElementById('suspense-overlay');
+  const suspenseText = document.getElementById('suspense-text');
+  const suspenseBar  = document.getElementById('suspense-bar');
+  const instrEl      = document.getElementById('instructions');
+  const highEl       = document.getElementById('high-score');
+
+  // init best laps display
+  if (bestLaps > 0) highEl.textContent = bestLaps;
+
+  // ── Core sift logic ───────────────────────────────────────────────────────
+  function sift() {
+    if (suspensePending) { resolveSuspense(); return; }
+    if (sifting) return;
+
+    if (current === 0) {
+      // First tap: start the game
+      instrEl.style.display = 'none';
+      advance();
+      return;
+    }
+
+    advance();
+  }
+
+  function advance() {
+    // After 10, wrap back to 1 (new lap)
+    const next = current >= 10 ? 1 : current + 1;
+
+    if (needsSuspense(next)) {
+      showSuspense(next);
+    } else {
+      reveal(next);
+    }
+  }
+
+  let suspensePending = null; // holds { n, timeoutId }
+
+  function showSuspense(n) {
+    sifting = true;
+
+    const questions = [
+      `WAIT...\nDO THEY HAVE ${n}?`,
+      `OH NO.\nCAN THEY HAVE ${n}?`,
+      `HOLD ON.\nIS ${n} IN THERE??`,
+      `THEY WOULDN'T.\nWOULD THEY HAVE ${n}?`,
+    ];
+    suspenseText.textContent = questions[Math.floor(Math.random() * questions.length)];
+    suspenseOver.classList.add('active');
+
+    const tid = setTimeout(() => resolveSuspense(), 2200);
+    suspensePending = { n, timeoutId: tid };
+  }
+
+  function resolveSuspense() {
+    if (!suspensePending) return;
+    const { n, timeoutId } = suspensePending;
+    clearTimeout(timeoutId);
+    suspensePending = null;
+    suspenseOver.classList.remove('active');
+    sifting = false;
+    reveal(n);
+  }
+
+  function reveal(n) {
+    current = n;
+
+    // Display number
+    numDisplay.textContent = n;
+    numDisplay.classList.remove('pop');
+    void numDisplay.offsetWidth;
+    numDisplay.classList.add('pop');
+
+    // Progress bar: simple 1–10 fill
+    suspenseBar.style.width = (n / 10 * 100) + '%';
+
+    // Reaction
+    reactionEl.textContent = getReaction(n);
+
+    // Hit 10 — lap complete
+    if (n === 10) {
+      launchConfetti();
+      sifting = true;
+      setTimeout(() => {
+        laps++;
+        if (laps > bestLaps) {
+          bestLaps = laps;
+          localStorage.setItem('numbers_best', bestLaps);
+          highEl.textContent = bestLaps;
+        }
+        // Brief round-complete message, then reset
+        reactionEl.textContent = `ROUND ${laps} DONE.\nSTARTING OVER.`;
+        numDisplay.textContent = '—';
+        suspenseBar.style.width = '0%';
+        current = 0;
+        sifting = false;
+      }, 1800);
+    }
+  }
+
+  // ── Confetti ──────────────────────────────────────────────────────────────
+  const canvas  = document.getElementById('confetti-canvas');
+  const ctx     = canvas.getContext('2d');
+  let particles = [];
+
+  function resize() {
+    canvas.width  = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  function launchConfetti() {
+    for (let i = 0; i < 120; i++) {
+      particles.push({
+        x:    Math.random() * canvas.width,
+        y:    Math.random() * canvas.height * 0.4 - 20,
+        vx:   (Math.random() - 0.5) * 6,
+        vy:   Math.random() * 4 + 2,
+        size: Math.random() * 8 + 4,
+        color: ['#00ff88','#ffdd00','#ff6688','#88aaff','#ffffff'][Math.floor(Math.random()*5)],
+        rot:  Math.random() * 360,
+        spin: (Math.random() - 0.5) * 8,
+        life: 1,
+      });
+    }
+    if (particles.length > 0 && !animating) requestAnimationFrame(drawConfetti);
+  }
+
+  let animating = false;
+  function drawConfetti() {
+    animating = true;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    particles = particles.filter(p => p.life > 0);
+    for (const p of particles) {
+      ctx.save();
+      ctx.globalAlpha = p.life;
+      ctx.fillStyle = p.color;
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rot * Math.PI / 180);
+      ctx.fillRect(-p.size/2, -p.size/2, p.size, p.size * 0.5);
+      ctx.restore();
+      p.x   += p.vx;
+      p.y   += p.vy;
+      p.vy  += 0.15;
+      p.rot += p.spin;
+      p.life -= 0.012;
+    }
+    if (particles.length > 0) {
+      requestAnimationFrame(drawConfetti);
+    } else {
+      animating = false;
+    }
+  }
+
+  // Also allow spacebar / enter to sift
+  document.addEventListener('keydown', e => {
+    if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); sift(); }
+  });
+</script>
+</body>
+</html>
